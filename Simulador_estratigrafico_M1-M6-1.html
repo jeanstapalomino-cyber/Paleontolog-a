@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador estratigráfico M-1 a M-6</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: log sheet on the left (column + live water), control bench on the right; stacks on phones */
+:root{
+  --bg:#EDF0F1; --surface:#FFFFFF; --ink:#1C2A33; --muted:#5B6B75; --line:#CDD5DA;
+  --accent:#B5621B; --accent-soft:#F3E2D2; --water:#7DB2D1; --water-deep:#4C8DB4;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11181D; --surface:#19232A; --ink:#E3E9EC; --muted:#93A3AD; --line:#2D3B44;
+  --accent:#E3934D; --accent-soft:#3A2A1C; --water:#3E7FA6; --water-deep:#2E6688; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11181D; --surface:#19232A; --ink:#E3E9EC; --muted:#93A3AD; --line:#2D3B44;
+  --accent:#E3934D; --accent-soft:#3A2A1C; --water:#3E7FA6; --water-deep:#2E6688; color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px}
+header h1{font-family:var(--display);font-weight:700;font-size:clamp(26px,4vw,36px);letter-spacing:.01em;margin:0;line-height:1.1;text-wrap:balance}
+header p{margin:4px 0 0;color:var(--muted);max-width:70ch}
+.grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.label{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.status{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:baseline;margin-bottom:8px}
+.status b{font-family:var(--display);font-size:20px;font-weight:600}
+.status .mono{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.energy{display:flex;align-items:center;gap:8px;font-size:13px}
+.meter{display:inline-flex;gap:3px}
+.meter i{width:14px;height:8px;border-radius:2px;background:var(--line)}
+.meter i.on{background:var(--water-deep)}
+#col{width:100%;height:auto;display:block}
+.svgbox{overflow-x:auto}
+.stages{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.stage{font-size:12.5px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.stage.on{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);font-weight:600}
+.stage.done{color:var(--ink)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font-family:var(--body);font-size:13.5px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;min-width:118px}
+button:hover{border-color:var(--accent)}
+button:focus-visible,select:focus-visible,input:focus-visible,.layer:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input[type=range]{accent-color:var(--accent);width:100%}
+.scrub{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.layers{display:grid;gap:6px;margin-top:8px}
+.layer{display:grid;grid-template-columns:22px 46px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 8px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.layer.sel{border-color:var(--accent);background:var(--accent-soft)}
+.sw{width:22px;height:22px;border-radius:4px;border:1px solid rgba(0,0,0,.35)}
+.lid{font-family:var(--display);font-weight:700;font-size:17px}
+.lname{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lrow{display:grid;grid-template-columns:minmax(0,1fr) 54px;gap:6px;align-items:center}
+.lrow output{font-family:var(--mono);font-size:12px;text-align:right}
+.mv{display:flex;flex-direction:column;gap:2px}
+.mv button{padding:0 7px;font-size:11px;line-height:16px}
+.detail h3{font-family:var(--display);font-size:22px;margin:2px 0 4px;font-weight:600}
+.detail dl{display:grid;grid-template-columns:110px minmax(0,1fr);gap:4px 10px;margin:8px 0 0}
+.detail dt{color:var(--muted);font-size:12.5px}
+.detail dd{margin:0}
+.note{font-size:12.5px;color:var(--muted);margin-top:8px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:12.5px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend svg{border:1px solid rgba(0,0,0,.35);border-radius:3px}
+.side{display:grid;gap:16px;min-width:0}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <h1>Simulador estratigráfico · Muestras M-1 a M-6</h1>
+    <p>Reproduce cómo se depositó la secuencia capa por capa, cómo se compactó y cómo los fluidos con hierro, manganeso y sílice la alteraron después. Ajusta espesores y orden para probar otras hipótesis.</p>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-label="Columna simulada">
+      <div class="status">
+        <div><span class="label">Etapa</span><br><b id="stName">Columna completa</b></div>
+        <div><span class="label">Capa activa</span><br><b id="stLayer">—</b></div>
+        <div class="energy"><span class="label">Energía del agua</span> <span class="meter" id="meter"><i></i><i></i><i></i></span> <span id="enTxt">—</span></div>
+      </div>
+      <div class="stages" id="stages">
+        <span class="stage" data-s="0">1 · Depósito</span>
+        <span class="stage" data-s="1">2 · Compactación</span>
+        <span class="stage" data-s="2">3 · Diagénesis</span>
+      </div>
+      <div class="svgbox"><svg id="col" viewBox="0 0 560 620" role="img" aria-label="Columna estratigráfica simulada"></svg></div>
+      <div class="legend" id="legend"></div>
+      <div class="controls" style="margin-top:12px">
+        <button class="primary" id="play">▶ Simular</button>
+        <button id="reset">Reiniciar</button>
+        <label for="speed" class="label" style="margin-left:4px">Velocidad</label>
+        <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+      </div>
+      <div class="scrub"><span>inicio</span><input type="range" id="scrub" min="0" max="1000" value="1000" aria-label="Momento de la simulación"><span id="pct">100%</span></div>
+    </section>
+
+    <div class="side">
+      <section class="panel detail" id="detail" aria-live="polite"></section>
+      <section class="panel">
+        <div class="label">Capas · de techo a base</div>
+        <div class="layers" id="layers"></div>
+        <p class="note">Espesores medidos: M-1 20 cm, M-2 33 cm, M-3 24 cm, M-4 11 cm, M-5 10 cm, M-6 12 cm (total 110 cm). La columna está a escala; puedes ajustarlos para probar otros escenarios.</p>
+        <div class="controls"><button id="order">Restaurar orden y espesores</button></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+const S={
+ M1:{id:"M-1",name:"Arenisca fina laminada",lit:"sand",gw:150,color:"#E6C99B",energy:2,comp:.95,feats:["lam","mn"],th:.20,
+   desc:"Beige anaranjado con laminación paralela. Banda oscura de óxidos de Fe-Mn y motas de Mn.",interp:"Corriente tractiva moderada; oxidación diagenética de Fe-Mn."},
+ M2:{id:"M-2",name:"Limolita blanquecina o toba fina",lit:"silt",gw:100,color:"#E7E5DD",energy:1,comp:.85,feats:["fe"],th:.33,
+   desc:"Gris claro, terrosa y lajosa; sin reacción al HCl. Manchas amarillo-ocre de limonita.",interp:"Decantación en aguas tranquilas; posible aporte volcánico."},
+ M3:{id:"M-3",name:"Arenisca fina",lit:"sand",gw:140,color:"#D8C6A2",energy:2,comp:.95,feats:["lam","lies"],th:.24,
+   desc:"Gris pardo a beige con laminación paralela. Aureolas de óxidos de Fe; posibles micas.",interp:"Corriente tractiva moderada."},
+ M4:{id:"M-4",name:"Lutita o limolita violácea",lit:"shale",gw:75,color:"#CDB6C8",energy:0,comp:.7,feats:["rip","red"],th:.11,
+   desc:"Gris a morado, con fisilidad marcada. Posibles ondulitas y manchas de reducción gris verdosas.",interp:"Decantación con corrientes débiles; condiciones oxidantes."},
+ M5:{id:"M-5",name:"Arenisca fina silicificada",lit:"silic",gw:150,color:"#C9B89C",energy:2,comp:.97,feats:["lam","vein"],th:.10,
+   desc:"Bandeado gris, negro y ocre; muy dura. Vetas de cuarzo o calcita y red de óxidos de Fe.",interp:"Corriente tractiva moderada; silicificación posterior."},
+ M6:{id:"M-6",name:"Arenisca fina",lit:"sand",gw:150,color:"#E9D5AA",energy:2,comp:.95,feats:["lam","lies","mn"],th:.12,
+   desc:"Beige a ocre, laminada y fracturada. Anillos de Liesegang y dendritas de Mn.",interp:"Corriente tractiva moderada; circulación de fluidos con Fe-Mn."}
+};
+const DEFAULT_TH=Object.fromEntries(Object.entries(S).map(([k,v])=>[k,v.th]));
+let order=["M1","M2","M3","M4","M5","M6"]; // base -> techo
+let t=1, playing=false, speed=1, sel="M6", last=0, particles=[];
+const LIT={sand:"Arenisca",silic:"Arenisca silicificada",silt:"Limolita o toba",shale:"Lutita"};
+const ENERGY=["Muy baja · decantación","Baja · decantación","Moderada · tracción"];
+const FEAT={lam:"Laminación paralela",rip:"Ondulitas (posibles)",lies:"Anillos de Liesegang",mn:"Dendritas y motas de Mn",fe:"Manchas de limonita",red:"Manchas de reducción",vein:"Vetas de cuarzo o calcita"};
+const DEP=.72, CMP=.84; // stage boundaries
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const fmt=(m,dp=0)=>m<2?(m*100).toFixed(dp)+" cm":m.toFixed(2)+" m";
+const clamp=x=>Math.max(0,Math.min(1,x)), ease=x=>x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;
+
+const defs=`<defs>
+<pattern id="p-sand" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#3a3226"/><circle cx="6.5" cy="6.5" r="1" fill="#3a3226"/></pattern>
+<pattern id="p-silic" width="11" height="11" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#3a3226"/><circle cx="7.5" cy="7.5" r="1" fill="#3a3226"/><path d="M0 11L11 0" stroke="#3a3226" stroke-width=".7"/></pattern>
+<pattern id="p-silt" width="22" height="10" patternUnits="userSpaceOnUse"><path d="M1 3h9M12 8h9" stroke="#3a3226" stroke-width=".9"/><circle cx="15" cy="3" r=".9" fill="#3a3226"/><circle cx="4" cy="8" r=".9" fill="#3a3226"/></pattern>
+<pattern id="p-shale" width="16" height="7" patternUnits="userSpaceOnUse"><path d="M0 2h11M8 5.5h11M-8 5.5h11" stroke="#3a3226" stroke-width=".8"/></pattern>
+</defs>`;
+
+function geom(){
+  const sum=order.reduce((a,k)=>a+S[k].th,0);
+  const sumD=order.reduce((a,k)=>a+S[k].th/S[k].comp,0);
+  const H=470, ppm=H/Math.max(sumD,.05);
+  // deposition windows proportional to thickness
+  let acc=0; const win={};
+  order.forEach(k=>{const d=S[k].th/sum*DEP; win[k]=[acc,acc+d]; acc+=d;});
+  return {sum,ppm,win};
+}
+function state(){
+  const g=geom(); const cs=ease(clamp((t-DEP)/(CMP-DEP))); const dg=clamp((t-CMP)/(1-CMP));
+  let y=560, active=null, layers=[];
+  order.forEach(k=>{
+    const [a,b]=g.win[k]; const f=clamp((t-a)/(b-a));
+    if(t>=a&&t<b&&t<DEP) active=k;
+    const comp=1-(1-S[k].comp)*cs;
+    const h=S[k].th/S[k].comp*f*comp*g.ppm;
+    layers.push({k,y0:y-h,y1:y,h,f,comp}); y-=h;
+  });
+  return {g,cs,dg,active,layers,surface:y};
+}
+const X0=96;
+function glyph(f,cx,cy,o){
+  const st=`opacity="${o}"`;
+  switch(f){
+    case"lies":return `<g ${st} fill="none" stroke="#9A4F14" stroke-width="1.3"><circle cx="${cx}" cy="${cy}" r="5"/><circle cx="${cx}" cy="${cy}" r="10"/><circle cx="${cx}" cy="${cy}" r="15"/></g>`;
+    case"mn":return `<g ${st} stroke="#1d1a17" stroke-width="1.3" fill="none"><path d="M${cx} ${cy+11}V${cy-11}M${cx} ${cy-2}l8 -7M${cx} ${cy+3}l-7 -6M${cx} ${cy-6}l-5 -5"/></g>`;
+    case"fe":return `<rect ${st} x="${cx-10}" y="${cy-6}" width="20" height="12" rx="4" fill="#D9A441" stroke="#9A5B1E"/>`;
+    case"red":return `<circle ${st} cx="${cx}" cy="${cy}" r="8" fill="#B9CDB4" stroke="#5E7D58"/>`;
+    case"vein":return `<path ${st} d="M${cx-14} ${cy+10}L${cx-4} ${cy-6}L${cx+4} ${cy+4}L${cx+14} ${cy-10}" stroke="#3F6FA8" stroke-width="2.4" fill="none"/>`;
+  }
+  return"";
+}
+function draw(){
+  const s=state(), svg=document.getElementById("col");
+  let o=defs;
+  const ink="var(--ink)",muted="var(--muted)",line="var(--line)";
+  // headers
+  o+=`<text x="20" y="22" font-family="var(--display)" font-size="14" font-weight="600" fill="${muted}" letter-spacing="1">ESPESOR (${s.g.sum<2?"cm":"m"})</text>`;
+  o+=`<text x="${X0}" y="22" font-family="var(--display)" font-size="14" font-weight="600" fill="${muted}" letter-spacing="1">LITOLOGÍA</text>`;
+  o+=`<text x="330" y="22" font-family="var(--display)" font-size="14" font-weight="600" fill="${muted}" letter-spacing="1">MUESTRA</text>`;
+  // water body during deposition
+  const wa=t<DEP?1:Math.max(0,1-(t-DEP)/.05);
+  if(wa>0){
+    o+=`<rect x="${X0}" y="40" width="220" height="${Math.max(0,s.surface-40)}" fill="var(--water)" opacity="${.32*wa}"/>`;
+    for(let i=0;i<3;i++){const yy=50+i*7;o+=`<path d="M${X0} ${yy} q13 -4 27 0 t27 0 t27 0 t27 0 t27 0 t27 0 t27 0 t31 0" fill="none" stroke="var(--water-deep)" stroke-width="1" opacity="${.5*wa}"/>`;}
+    o+=`<text x="${X0+212}" y="70" text-anchor="end" font-size="11.5" fill="var(--water-deep)" opacity="${wa}">columna de agua</text>`;
+  }
+  // scale bar
+  const base=560, top=base-s.g.sum*s.g.ppm;
+  o+=`<line x1="78" y1="${base}" x2="78" y2="${top}" stroke="${ink}" stroke-width="1"/>`;
+  const step=s.g.sum<=.6?.05:s.g.sum<=1.5?.1:s.g.sum<=4?.5:1, cmU=s.g.sum<2;
+  for(let m=0;m<=s.g.sum+1e-6;m+=step){const yy=base-m*s.g.ppm;o+=`<line x1="72" x2="78" y1="${yy}" y2="${yy}" stroke="${ink}"/><text x="66" y="${yy+4}" text-anchor="end" font-family="var(--mono)" font-size="11" fill="${muted}">${cmU?Math.round(m*100):m.toFixed(1)}</text>`;}
+  // layers
+  s.layers.forEach((L,i)=>{
+    const d=S[L.k]; if(L.h<.2) return;
+    const w=d.gw, isSel=L.k===sel;
+    o+=`<g data-k="${L.k}" style="cursor:pointer">`;
+    o+=`<rect x="${X0}" y="${L.y0}" width="${w}" height="${L.h}" fill="${d.color}"/>`;
+    o+=`<rect x="${X0}" y="${L.y0}" width="${w}" height="${L.h}" fill="url(#p-${d.lit})" opacity=".85"/>`;
+    // lamination lines for sands during deposition
+    if(d.feats.includes("lam")){for(let yy=L.y1-6;yy>L.y0+3;yy-=9)o+=`<line x1="${X0+4}" x2="${X0+w-4}" y1="${yy}" y2="${yy}" stroke="#3a3226" stroke-width=".35" opacity=".55"/>`;}
+    // ripples on top of shale
+    if(d.feats.includes("rip")&&L.f>.98){let p=`M${X0} ${L.y0+1}`;for(let x=0;x<w;x+=12)p+=` q6 -5 12 0`;o+=`<path d="${p}" fill="none" stroke="#3a3226" stroke-width="1"/>`;}
+    // silicification tint
+    if(d.lit==="silic"&&s.dg>0)o+=`<rect x="${X0}" y="${L.y0}" width="${w}" height="${L.h}" fill="#8fa3b8" opacity="${.18*s.dg}"/>`;
+    // diagenetic features
+    if(s.dg>0){const fs=d.feats.filter(f=>!["lam","rip"].includes(f));fs.forEach((f,j)=>{const cx=X0+w*(j+1)/(fs.length+1);o+=glyph(f,cx,L.y0+L.h/2,s.dg.toFixed(2));});}
+    o+=`<rect x="${X0}" y="${L.y0}" width="${w}" height="${L.h}" fill="none" stroke="${isSel?"var(--accent)":"#2b2520"}" stroke-width="${isSel?2.5:1.1}"/>`;
+    // label column
+    const cy=L.y0+L.h/2;
+    o+=`<line x1="${X0+w+4}" x2="322" y1="${cy}" y2="${cy}" stroke="${line}" stroke-dasharray="2 3"/>`;
+    o+=`<text x="330" y="${cy+5}" font-family="var(--display)" font-weight="700" font-size="17" fill="${isSel?"var(--accent)":ink}">${d.id}</text>`;
+    if(L.h>16)o+=`<text x="372" y="${cy+4}" font-size="12" fill="${muted}">${d.name.length>24?d.name.slice(0,23)+"…":d.name}</text>`;
+    o+=`</g>`;
+  });
+  // particles
+  particles.forEach(p=>{o+=`<circle cx="${p.x}" cy="${p.y}" r="${p.r}" fill="${p.c}" stroke="#2b2520" stroke-width=".4"/>`;});
+  // grain-size scale
+  const gs=[["Arc",75],["Lim",100],["Af",150],["Am",185],["Ag",220]];
+  o+=`<line x1="${X0}" x2="${X0+220}" y1="580" y2="580" stroke="${ink}"/>`;
+  gs.forEach(([l,v])=>{o+=`<line x1="${X0+v}" x2="${X0+v}" y1="576" y2="584" stroke="${ink}"/><text x="${X0+v}" y="598" text-anchor="middle" font-size="11" fill="${muted}">${l}</text>`;});
+  o+=`<text x="${X0}" y="614" font-size="11" fill="${muted}">Tamaño de grano →</text>`;
+  if(s.cs>0&&t<CMP+.08){o+=`<text x="330" y="${Math.max(60,s.surface-12)}" font-size="12" fill="var(--accent)">↓ carga y compactación</text>`;}
+  svg.innerHTML=o;
+  ui(s);
+}
+function ui(s){
+  const stage=t<DEP?0:t<CMP?1:t<1?2:3;
+  document.getElementById("stName").textContent=["Depósito","Compactación","Diagénesis","Columna completa"][stage];
+  document.getElementById("stLayer").textContent=s.active?`${S[s.active].id} · ${LIT[S[s.active].lit]}`:(stage===3?"—":stage===1?"Toda la secuencia":"Fluidos Fe-Mn-Si");
+  const en=s.active?S[s.active].energy:-1;
+  document.querySelectorAll("#meter i").forEach((el,i)=>el.classList.toggle("on",en>=i));
+  document.getElementById("enTxt").textContent=en>=0?ENERGY[en]:"Sin depósito";
+  document.querySelectorAll(".stage").forEach(el=>{const n=+el.dataset.s;el.classList.toggle("on",n===stage);el.classList.toggle("done",n<stage);});
+  document.getElementById("scrub").value=Math.round(t*1000);
+  document.getElementById("pct").textContent=Math.round(t*100)+"%";
+}
+function detail(){
+  const d=S[sel], s=state(), L=s.layers.find(l=>l.k===sel);
+  const now=(d.th*(L?L.comp:1)).toFixed(2);
+  document.getElementById("detail").innerHTML=`<div class="label">Capa seleccionada</div>
+  <h3>${d.id} · ${d.name}</h3><p style="margin:0">${d.desc}</p>
+  <dl><dt>Litología</dt><dd>${LIT[d.lit]}</dd>
+  <dt>Energía</dt><dd>${ENERGY[d.energy]}</dd>
+  <dt>Espesor</dt><dd><span style="font-family:var(--mono)">${fmt(d.th)}</span> medido hoy · <span style="font-family:var(--mono)">≈ ${fmt(d.th/d.comp,1)}</span> al depositarse (compactación estimada ${Math.round((1-d.comp)*100)}%)</dd>
+  <dt>Rasgos</dt><dd>${d.feats.map(f=>FEAT[f]).join(", ")}</dd>
+  <dt>Interpretación</dt><dd>${d.interp}</dd></dl>`;
+}
+function list(){
+  const box=document.getElementById("layers");
+  box.innerHTML=[...order].reverse().map(k=>{const d=S[k];return `<div class="layer${k===sel?" sel":""}" data-k="${k}" tabindex="0">
+   <span class="sw" style="background:${d.color}"></span><span class="lid">${d.id}</span>
+   <div style="min-width:0"><div class="lname">${d.name}</div>
+   <div class="lrow"><input type="range" id="th-${k}" min="0.02" max="1" step="0.01" value="${d.th}" aria-label="Espesor de ${d.id}"><output>${fmt(d.th)}</output></div></div>
+   <div class="mv"><button data-up="${k}" aria-label="Subir ${d.id}">▲</button><button data-dn="${k}" aria-label="Bajar ${d.id}">▼</button></div></div>`;}).join("");
+}
+function legend(){
+  const it=[["sand","#E9D5AA","Arenisca"],["silic","#C9B89C","Arenisca silicificada"],["silt","#E7E5DD","Limolita o toba"],["shale","#CDB6C8","Lutita"]];
+  document.getElementById("legend").innerHTML=it.map(([p,c,l])=>`<span><svg width="26" height="16">${defs}<rect width="26" height="16" fill="${c}"/><rect width="26" height="16" fill="url(#p-${p})"/></svg>${l}</span>`).join("")+
+  `<span>${svgG("lies")}Liesegang</span><span>${svgG("mn")}Mn</span><span>${svgG("fe")}Limonita</span><span>${svgG("red")}Reducción</span><span>${svgG("vein")}Vetas</span>`;
+}
+function svgG(f){return `<svg width="34" height="34" viewBox="0 0 34 34" style="border:none">${glyph(f,17,17,1)}</svg>`;}
+
+function tick(ts){
+  if(!playing){last=0;return;}
+  const dt=last?Math.min(.05,(ts-last)/1000):0; last=ts;
+  t=Math.min(1,t+dt*speed/14);
+  const s=state();
+  if(s.active&&!reduce){
+    const d=S[s.active], r=d.lit==="shale"?1:d.lit==="silt"?1.5:2.3, n=d.lit==="shale"?2:3;
+    for(let i=0;i<n;i++) if(Math.random()<.6) particles.push({x:X0+6+Math.random()*(d.gw-12),y:44,v:(d.lit==="shale"?60:d.lit==="silt"?110:190)*(0.8+Math.random()*.4),r,c:d.color});
+  }
+  particles.forEach(p=>p.y+=p.v*dt*speed);
+  particles=particles.filter(p=>p.y<s.surface-p.r && t<DEP+.02);
+  if(t>=1){playing=false;particles=[];setBtn();}
+  draw();
+  if(sel)detail();
+  if(playing)requestAnimationFrame(tick);
+}
+function setBtn(){document.getElementById("play").textContent=playing?"❚❚ Pausa":(t>=1?"▶ Simular":"▶ Continuar");}
+document.getElementById("play").onclick=()=>{
+  if(playing){playing=false;setBtn();return;}
+  if(t>=1){t=0;particles=[];}
+  playing=true;setBtn();requestAnimationFrame(tick);
+};
+document.getElementById("reset").onclick=()=>{playing=false;t=0;particles=[];setBtn();draw();detail();};
+document.getElementById("speed").onchange=e=>speed=+e.target.value;
+document.getElementById("scrub").oninput=e=>{playing=false;particles=[];t=e.target.value/1000;setBtn();draw();detail();};
+document.getElementById("order").onclick=()=>{order=["M1","M2","M3","M4","M5","M6"];for(const k in S)S[k].th=DEFAULT_TH[k];list();draw();detail();};
+document.getElementById("col").addEventListener("click",e=>{const g=e.target.closest("[data-k]");if(g){sel=g.dataset.k;list();draw();detail();}});
+const lb=document.getElementById("layers");
+lb.addEventListener("input",e=>{if(e.target.type!=="range")return;const k=e.target.id.slice(3);S[k].th=+e.target.value;e.target.nextElementSibling.textContent=fmt(S[k].th);draw();detail();});
+lb.addEventListener("click",e=>{
+  const up=e.target.dataset.up, dn=e.target.dataset.dn;
+  if(up||dn){const k=up||dn,i=order.indexOf(k),j=up?i+1:i-1;if(j>=0&&j<order.length){[order[i],order[j]]=[order[j],order[i]];list();draw();detail();}return;}
+  if(e.target.type==="range")return;
+  const row=e.target.closest(".layer");if(row){sel=row.dataset.k;list();draw();detail();}
+});
+lb.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains("layer")){e.preventDefault();sel=e.target.dataset.k;list();draw();detail();}});
+list();legend();draw();detail();setBtn();
+</script>
+
+</body>
+</html>
